@@ -19,28 +19,15 @@ var io = require('socket.io')(server);
 var cache = {
   nameList: {},
   nameListActive: new Set([]),
-  msgList: []
+  msgList: [],
 };
 
-var sessionFresh = setInterval(function() {
-  for (var key in cache.nameList) {
-    cache.nameList[key] -= 10000;
-    if (cache.nameList[key] <= 0) {
-      delete cache.nameList[key];
-    }
-  }
-}, 10000);
-
-io.on('connection', function(socket) {
+io.on('connection', function(socket) {//监听客户端连接
   socket.on('msg from client', function(data) {
-    if (!cache.nameListActive.has(data.nickName)) {
-      socket.emit('self logout');
-    } else {
-      socket.broadcast.emit('msg from server', data);
-      cache.msgList.push(data);
-      if (cache.msgList.length >= 100) {
-        cache.msgList.shift();
-      }
+    socket.broadcast.emit('msg from server', data);//给自己以外的客户端发送消息
+    cache.msgList.push(data);
+    if (cache.msgList.length >= 100) {
+      cache.msgList.shift();
     }
   });
   socket.on('disconnect', function() {
@@ -48,28 +35,31 @@ io.on('connection', function(socket) {
     io.emit('guest update',
       [...cache.nameListActive]
     );
+    socket.broadcast.emit('msg from server', {leaveName:socket.nickname})
   });
   socket.on('guest come', function(data) {
     cache.nameListActive.add(data);
-    cache.nameList[data] = 7200000;
+    cache.nameList[data] = true;
     socket.nickname = data;
     io.emit('guest update',
       [...cache.nameListActive]
     );
   });
   socket.on('guest leave', function(data) {
-    cache.nameListActive.delete(data);
-    delete cache.nameList[data];
+    cache.nameListActive.delete(data.leaveName);
+    delete cache.nameList[data.leaveName];
     socket.nickname = undefined;
+    cache.msgList.push(data)
     io.emit('guest update',
       [...cache.nameListActive]
     );
+    socket.broadcast.emit('msg from server', data)
   });
-  socket.on('heart beat', function() {
-    if (socket.nickname != undefined) {
-      cache.nameList[socket.nickname] = 7200000;
-    }
-  });
+  // socket.on('heart beat', function() {
+  //   if (socket.nickname != undefined) {
+  //     cache.nameList[socket.nickname] = 7200000;
+  //   }
+  // });
 });
 
 app.use(webpackDev(compiler, {
@@ -78,58 +68,30 @@ app.use(webpackDev(compiler, {
   hot: false
 }));
 
-// app.use(serve('./dist'));
-
 app.use(route.get('/', function*() {
   this.body = yield render('index', {});
 }));
 
-app.use(route.get('/api/auth', function*() {
-  if (this.cookies.get('nickname') == undefined) {
-    this.body = JSON.stringify({
-      permit: false
-    });
-  } else {
-    var nick = this.cookies.get('nickname');
-    nick = new Buffer(nick, 'base64').toString();
-    this.body = JSON.stringify({
-      permit: true,
-      nickname: nick
-    });
-  }
-}));
-
 app.use(route.post('/api/nickname', function*() {
-  if (this.cookies.get('nickname') != undefined) {
+  var rawBody = yield parse(this, {});
+  if (!(rawBody in cache.nameList)) {
+    // var body = new Buffer(rawBody).toString('base64');
     this.body = JSON.stringify({
-      legal: 'self login'
-    })
+      legal: 'yes'
+    });
   } else {
-    var rawBody = yield parse(this, {});
-    if (!(rawBody in cache.nameList)) {
-      var body = new Buffer(rawBody).toString('base64');
-      this.cookies.set('nickname', body, {
-        maxAge: 7200000
-      });
-      this.body = JSON.stringify({
-        legal: 'yes'
-      });
-    } else {
-      this.body = JSON.stringify({
-        legal: 'repeat'
-      });
-    }
+    this.body = JSON.stringify({
+      legal: 'repeat'
+    });
   }
 }));
 
 app.use(route.post('/api/logout', function*() {
-  var nick = this.cookies.get('nickname');
-  this.cookies.set('nickname', undefined);
-  if (nick != undefined) {
-    nick = new Buffer(nick, 'base64').toString();
-    cache.nameListActive.delete(nick);
-    delete cache.nameList[nick];
-  }
+  var deleteNickName = yield parse(this, {})
+  var nick = new Buffer(deleteNickName, 'base64').toString();
+  cache.nameListActive.delete(nick);
+  cache.msgList = []
+  delete cache.nameList[nick];
   this.body = '';
 }));
 

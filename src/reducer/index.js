@@ -19,7 +19,6 @@ function name_reducer(state = [], action) {
       return state;
   }
 }
-
 function msg_reducer(state = [], action) {
   switch (action.type) {
     case 'MSG_UPDATE':
@@ -36,7 +35,7 @@ function msg_reducer(state = [], action) {
 var reducers = combineReducers({
   nickName: nickname_reducer,
   nameList: name_reducer,
-  msgList: msg_reducer
+  msgList: msg_reducer,
 });
 
 export default reducers

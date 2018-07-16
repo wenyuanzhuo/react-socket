@@ -5,15 +5,6 @@ require('./index.less');
 class NameList extends React.Component {
   constructor(props) {
     super(props);
-  //   this.state = {
-  //     list: []
-  //   }
-  //   this.index = this.props.eventHandler.subscribe('namelist fresh', function(data) {
-  //     this.setState({list: data.list});
-  //   }.bind(this));
-  // }
-  // componentWillUnmount() {
-  //   this.props.eventHandler.unsubscribe('namelist fresh', this.index);
   }
   render() {
     var {nameList} = this.props;

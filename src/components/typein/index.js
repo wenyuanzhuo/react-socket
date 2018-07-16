@@ -8,6 +8,7 @@ class TypeIn extends React.Component {
     this.state = {
       text: ""
     };
+    this.status = false
     this.messageSend = this.messageSend.bind(this);
     this.messageType = this.messageType.bind(this);
     this.handleDown = this.handleDown.bind(this);
@@ -32,7 +33,12 @@ class TypeIn extends React.Component {
       value = value.replace(regRight, '&gt;');
       value = value.replace(/\n/g, '<br/>');
       var nickName = this.props.nickName;
-      this.props.handleSubmit(value, nickName);
+      // if (!this.status) {
+      //   this.props.handleSubmit(value, nickName, this.status);
+      //   this.status = true
+      // } else {
+        this.props.handleSubmit(value, nickName);
+      // }
     }
   }
   handleDown(e) {

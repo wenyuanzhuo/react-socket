@@ -19,9 +19,10 @@ function nickname_get(nickName) {
   }
 }
 
-function nickname_forget() {
+function nickname_forget(nickName) {
   return {
-    type: 'NICKNAME_FORGET'
+    type: 'NICKNAME_FORGET',
+    nickName,
   }
 }
 
