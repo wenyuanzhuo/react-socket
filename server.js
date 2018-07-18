@@ -23,43 +23,50 @@ var cache = {
 };
 
 io.on('connection', function(socket) {//监听客户端连接
-  socket.on('msg from client', function(data) {
-    socket.broadcast.emit('msg from server', data);//给自己以外的客户端发送消息
-    cache.msgList.push(data);
+  socket.on('MSG_UPDATE', function(data) {
+    socket.broadcast.emit('msg from server', {
+      type: 'MSG_UPDATE',
+      msg: data.msg
+    });//给自己以外的客户端发送消息
+    cache.msgList.push(data.msg);
     if (cache.msgList.length >= 100) {
       cache.msgList.shift();
     }
-  });
+  }); 
   socket.on('disconnect', function() {
     cache.nameListActive.delete(socket.nickname);
-    io.emit('guest update',
-      [...cache.nameListActive]
-    );
-    socket.broadcast.emit('msg from server', {leaveName:socket.nickname})
+    io.emit('guest update',{
+      type: 'GUEST_UPDATE',
+      nameList: [...cache.nameListActive]
+    });
+    socket.broadcast.emit('msg from server', {
+      type: 'MSG_UPDATE',
+      msg: {leaveName:socket.nickname}
+    })
   });
-  socket.on('guest come', function(data) {
-    cache.nameListActive.add(data);
-    cache.nameList[data] = true;
-    socket.nickname = data;
-    io.emit('guest update',
-      [...cache.nameListActive]
-    );
+  socket.on('NICKNAME_GET', function(data) {
+    cache.nameListActive.add(data.nickName);
+    cache.nameList[data.nickName] = true;
+    socket.nickname = data.nickname;
+    io.emit('guest update',{
+      type: 'GUEST_UPDATE',
+      nameList: [...cache.nameListActive]
+    });
   });
-  socket.on('guest leave', function(data) {
-    cache.nameListActive.delete(data.leaveName);
-    delete cache.nameList[data.leaveName];
+  socket.on('NICKNAME_FORGET', function(data) {
+    cache.nameListActive.delete(data.nickName.leaveName);
+    delete cache.nameList[data.nickName.leaveName];
     socket.nickname = undefined;
-    cache.msgList.push(data)
-    io.emit('guest update',
-      [...cache.nameListActive]
-    );
-    socket.broadcast.emit('msg from server', data)
+    cache.msgList.push(data.nickName)
+    io.emit('guest update',{
+      type: 'GUEST_UPDATE',
+      nameList: [...cache.nameListActive]
+    });
+    socket.broadcast.emit('msg from server', {
+      type: 'MSG_UPDATE',
+      msg: data.nickName
+    })
   });
-  // socket.on('heart beat', function() {
-  //   if (socket.nickname != undefined) {
-  //     cache.nameList[socket.nickname] = 7200000;
-  //   }
-  // });
 });
 
 app.use(webpackDev(compiler, {
@@ -75,7 +82,6 @@ app.use(route.get('/', function*() {
 app.use(route.post('/api/nickname', function*() {
   var rawBody = yield parse(this, {});
   if (!(rawBody in cache.nameList)) {
-    // var body = new Buffer(rawBody).toString('base64');
     this.body = JSON.stringify({
       legal: 'yes'
     });
