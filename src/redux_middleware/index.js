@@ -5,18 +5,9 @@ function createSocketMiddleware(socket) {
   return store => next => action => {
     if (!eventFlag) {
       eventFlag = true;
-      console.log('begin to mount');
-    //   socket.on('guest update', function(data) {
-    //     next(guest_update(data));
-    //   });
-    //   socket.on('msg from server', function(data) {
-    //     next(message_update(data));//MSG_UPDATE
-    //   });
-    // }
       var socketMethods = [ 'guest update', 'msg from server']
       for(var method of socketMethods) {
         socket.on(method, function(answer) {
-          console.log(answer)
           next(answer);
         });
       }
